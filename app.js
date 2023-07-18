@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const mongoose = require('mongoose')
 const ejs = require("ejs");
 const _ = require('lodash')
 
@@ -9,18 +10,33 @@ const contactContent = "Scelerisque eleifend donec pretium vulputate sapien. Rho
 
 const app = express()
 
+main().catch(err => console.log(err));
+
+async function main() {
+    await mongoose.connect('mongodb://127.0.0.1:27017/blogDB', { useNewUrlParser: true });
+}
+
 app.set('view engine', 'ejs')
 app.use(bodyParser.urlencoded({ encoded: true }))
 app.use(express.static("public"))
 
-let entries = [];
+const postSchema = {
+    title: String,
+    content: String
+};
+
+const Entry = mongoose.model("Entry", postSchema)
 
 app.get("/", (req, res) => {
-    res.render("home", {
-        startingContent: homeStartingContent,
-        posts: entries
+
+    Entry.find({}).then((entries) => {
+        res.render("home", {
+            startingContent: homeStartingContent,
+            posts: entries
+        })
+    }).catch((err) => {
+        console.log(err)
     })
-    
 })
 
 app.get("/about", (req, res) => {
@@ -36,26 +52,30 @@ app.get("/compose", (req, res) => {
 })
 
 app.post("/compose", (req, res) => {
-    const post = {
+
+
+    const post = new Entry({
         title: req.body.postTitle,
         content: req.body.postBody
-    }
-    entries.push(post)
-    res.redirect("/")
+    })
+    post.save().then(() => {
+        res.redirect("/")
+    }).catch((err) => {
+        console.log(err)
+    })
+
 })
 
 app.get('/posts/:postId', (req, res) => {
-    const requestedTitle = _.lowerCase(req.params.postId);
+    const requestedPostId = req.params.postId;
 
-    entries.forEach((post) => {
-        const storedTitle = _.lowerCase(post.title);
-        
-        if (storedTitle === requestedTitle) {
-            res.render('post', {
-                title: post.title,
-                content: post.content
-            })
-        }
+    Post.findOne({ _id: requestedId }).then((post) => {
+        res.render("post", {
+            title: post.title,
+            content: post.content
+        })
+    }).catch((err) => {
+        console.log(err)
     })
 })
 
